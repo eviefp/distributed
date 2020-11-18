@@ -1,0 +1,13 @@
+cradle:
+  cabal:
+    - path: "src"
+      component: "lib:distributed"
+
+    - path: "app/Main.hs"
+      component: "distributed:exe:distributed"
+
+    - path: "app/Paths_distributed.hs"
+      component: "distributed:exe:distributed"
+
+    - path: "test"
+      component: "distributed:test:distributed-test"
