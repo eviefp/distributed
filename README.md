@@ -1,5 +1,26 @@
 # distributed
 
+`distributed` is a runtime system which allows running code on multiple
+(networked) nodes, connecting nodes and passing data across nodes.
+
+The main idea is to use `Star` (Kleisli arrows such as `a -> m b`) as the "unit"
+of computation and compose them in some sort of graph.
+
+There are a few main parts:
+- an API which describes this "graph"
+- a runtime system which executes this graph
+- the ability to serialize and send data across the wire
+
+
+## Plan for next stream:
+- define as many instances as possible for `Flow`
+    (Applicative, Monad, Profunctor, Category?, Arrow?, etc., Strong?, Choice?)
+- write helpers/operators/etc. for making things easier to read/write
+
+
+
+### Old ideas
+
 # 1. Actor systems
 - you create actors
 - actors can
