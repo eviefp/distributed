@@ -1,10 +1,24 @@
 module Flow where
 
-import Control.Monad
+import           Control.Applicative
+    (liftA2)
+import qualified Control.Category       as Cat
+import           Control.Monad
     ((>=>))
-import Prelude
+import           Data.Profunctor
+    (Profunctor, dimap)
+import           Data.Profunctor.Choice
+    (Choice, left')
+import           Data.Profunctor.Strong
+    (Strong, first')
+import           Prelude
+
 
 data Flow m i o where
+    -- This are the basic constructors.
+    Eff    :: (a -> m b) -> Flow m a b
+    Pure   :: (a ->   b) -> Flow m a b
+
     --    Compose
     -- i ---- a ---- o
     Compose :: Flow m i a -> Flow m a o -> Flow m i o
@@ -17,15 +31,15 @@ data Flow m i o where
 
     -- Is this actually useful?
     -- Duplicate         Join
-    --            /---- i ---- o1----\
-    -- i ---------                    ----- (o1, o2)
-    --            \---- i ---- o2 ---/
+    --       /---- i ----\
+    -- i ----             ---- (i, i)
+    --       \---- i ----/
     Duplicate :: Flow m i (i, i)
 
     --           IfElse
-    --                   /---- Flow m a o ----\
-    -- i ---- Either a b                       ---- o
-    --                   \---- Flow m b o ----/
+    --                       /---- a ---- o ----\
+    -- i ---- Either a b ----                    ---- o
+    --                       \---- b ---- o ----/
     IfElse  :: Flow m i (Either a b) -> Flow m a o -> Flow m b o -> Flow m i o
 
     --     Cycle
@@ -33,86 +47,122 @@ data Flow m i o where
     -- i ---- Either i o ---- o
     Cycle   :: Flow m i (Either i o) -> Flow m i o
 
-    Map     :: (o1 -> o2) -> Flow m i o1 -> Flow m i o2
+    -- This just allows us to define a 'Functor' instance.
+    -- Dimap   :: (i2 -> i1) -> (o1 -> o2) -> Flow m i1 o1 -> Flow m i2 o2
 
-    Pure    :: (a -> m b) -> Flow m a b
 
-instance Functor m => Functor (Flow m i) where
-    fmap f = \case
-        Compose left right       -> Compose left (f <$> right)
-        Join left right          -> Map f $ Join left right
-        Duplicate                -> Map f Duplicate
-        IfElse branch left right -> IfElse branch (f <$> left) (f <$> right)
-        Cycle loop               -> Cycle (fmap f <$> loop)
-        Map g inner              -> Map (f . g) inner
-        Pure inner               -> Pure $ fmap f <$> inner
+instance Functor (Flow m i) where
+    fmap f = flip Compose (Pure f)
 
-flow1 :: Flow IO () String
-flow1 = Pure $ const getLine
+instance Applicative m => Applicative (Flow m i) where
+    pure o = Eff $ const (pure o)
 
-flow2 :: Flow IO String Int
-flow2 = Pure $ pure . read
+    --       / i ---- a ---- \
+    -- i ----                  ---- c
+    --       \ i ---- b ---- /
+    liftA2 f f1 f2 =
+        Compose Duplicate $ uncurry f <$> Join f1 f2
 
-flow3 :: Flow IO (Int, Int) Int
-flow3 = Pure $ pure . uncurry (+)
+{-
+    I don't think we want a monad instance. The `a -> Flow m i o` is
+    problematic: it's some sort of `Flow` generator at runtime. This
+    means a lot more power than I thought I would want to provide
+    to the API for now.
+-}
 
-flow4 :: Flow IO Int String
-flow4 = Pure $ pure . show
+instance Cat.Category (Flow m) where
+   id :: Flow m a a
+   id = Pure id
+
+   (.) :: Flow m b c -> Flow m a b -> Flow m a c
+   (.) = flip Compose
+
+instance Profunctor (Flow m) where
+    dimap :: (b -> a) -> (c -> d) -> Flow m a c -> Flow m b d
+    dimap f g p = Pure g Cat.. p Cat.. Pure f
+
+instance Strong (Flow m) where
+    first' :: Flow m i o -> Flow m (i, a) (o, a)
+    first' f = Join f Cat.id
+
+instance Choice (Flow m) where
+    -- i ---- o
+    left' :: Flow m i o -> Flow m (Either i a) (Either o a)
+    left' f = IfElse Cat.id (Left <$> f) (Pure Right)
+
+input :: Flow IO () String
+input = Eff $ const getLine
+
+string2Int :: Flow IO String Int
+string2Int = Pure read
+
+add :: Flow IO (Int, Int) Int
+add = Pure $ uncurry (+)
+
+output :: Flow IO Int String
+output = Pure show
+
+{-
+Cute pattern to remember/use.
+-----------------------------
+
+Given some flow `f :: Flow m a b`, if we do:
+
+Compose Duplicate f :: Flow (a, a) b
+Compose f Duplicate :: Flow a (b, b)
+
+-}
 
 -- () ---- String ---- Int ----\
---                              ---- Int ---- String
+--                              ---- (Int, Int) ---- Int ---- String
 -- () ---- String ---- Int ----/
 flow :: Flow IO () String
 flow =
     let
-        u = Pure $ const (pure ())
-        s0 = Compose u Duplicate
-        s1 = flow1 `Compose` flow2
+        s1 = input Cat.>>> string2Int
         s2 = Join s1 s1
-        s3 = Compose s2 flow3
-        s4 = Compose s3 flow4
-    in Compose s0 s4
-
-fib0 :: Monad m => () -> m (Int, Int)
-fib0 _ = pure (1, 1)
-
-fibNext :: Monad m => (Int, Int, Int) -> m (Either (Int, Int, Int) Int)
-fibNext (n, a, b)
-  | n <= 2 = pure $ Right b
-  | otherwise = pure $ Left (n - 1, b, a + b)
-
-fibFlow :: Flow IO () String
-fibFlow =
-    let
-        s1 :: Flow IO () Int
-        s1 = Compose flow1 flow2
-        -- seed for fib
-        s2 :: Flow IO () (Int, Int)
-        s2 = Pure fib0
-        -- all inputs, before map
-        s3 :: Flow IO ((), ()) (Int, (Int, Int))
-        s3 = Join s1 s2
-        --
-        s4 :: Flow IO ((), ()) (Int, Int, Int)
-        s4 = (\(a, (b, c)) -> (a, b, c)) <$> s3
-        --
-        s5 :: Flow IO (Int, Int, Int) Int
-        s5 = Cycle (Pure fibNext)
-        --
-        s6 :: Flow IO ((), ()) Int
-        s6 = Compose s4 s5
-    in Compose Duplicate (Compose s6 flow4)
+        s3 = s2 Cat.>>> add
+        s4 = s3 Cat.>>> output
+    in Duplicate Cat.>>> s4
 
 --                              Duplicate
 -- () ---- String ---- Int ---- (Int, Int) ---- Int ---- String
 flow' :: Flow IO () String
 flow' =
+    input
+        Cat.>>> string2Int
+        Cat.>>> Duplicate
+        Cat.>>> add
+        Cat.>>> output
+
+-------------------------------------------------------------
+
+fib0 :: Flow m () (Int, Int)
+fib0 = Pure $ const (0, 1)
+
+fibNext :: Flow m (Int, Int, Int) (Either (Int, Int, Int) Int)
+fibNext =
+    Pure
+        $ \case (n, a, b)
+                  | n <= 2    -> Right b
+                  | otherwise -> Left (n - 1, b, a + b)
+
+fibFlow :: Flow IO () String
+fibFlow =
     let
-        s0 = Compose flow2 Duplicate
-        s1 = flow1 `Compose` s0
-        s2 = Compose s1 flow3
-        s3 = Compose s2 flow4
-    in s3
+        -- read from console, convert to int
+        readInt :: Flow IO () Int
+        readInt = input Cat.>>> string2Int
+        -- all inputs, before map
+        curriedInputs :: Flow IO () (Int, (Int, Int))
+        curriedInputs = Duplicate Cat.>>> Join readInt fib0
+        -- massage outputs
+        inputs :: Flow IO () (Int, Int, Int)
+        inputs = (\(a, (b, c)) -> (a, b, c)) <$> curriedInputs
+        -- print
+        fib :: Flow IO () Int
+        fib = inputs Cat.>>> Cycle fibNext
+    in fib Cat.>>> output
 
 runFlow :: Monad m => Flow m a b -> a -> m b
 runFlow = \case
@@ -128,10 +178,10 @@ runFlow = \case
         runFlow branch >=> either (runFlow left) (runFlow right)
     l@(Cycle loop) ->
         runFlow loop >=> either (runFlow l) pure
-    Map g inner ->
-        fmap g . runFlow inner
-    Pure f ->
+    Eff f ->
         f
+    Pure f ->
+        pure . f
 
 run :: IO ()
 run = runFlow fibFlow () >>= putStrLn

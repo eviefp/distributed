@@ -12,11 +12,22 @@ There are a few main parts:
 - the ability to serialize and send data across the wire
 
 
-## Plan for next stream:
-- define as many instances as possible for `Flow`
-    (Applicative, Monad, Profunctor, Category?, Arrow?, etc., Strong?, Choice?)
-- write helpers/operators/etc. for making things easier to read/write
+Flow: A ---- B ---- C ---- D
 
+N, M
+
+Strategy Cycle:
+A ---- B ---- C ---- D
+M      N      M      N
+
+
+## Plan for next stream: Runtime System YAY
+- configuration:
+    - run in listen mode (do not try to connect to other nodes)
+    - run in connect mode (connect to other nodes, with specified addresses)
+    - node identifier
+- provide simple API to send messages across nodes
+    - messages should be things like "print something to console" or "PING/PONG"s
 
 
 ### Old ideas
