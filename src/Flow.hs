@@ -1,7 +1,10 @@
+{-# language Arrows #-}
+
 module Flow where
 
 import           Control.Applicative
     (liftA2)
+import qualified Control.Arrow          as Arr
 import qualified Control.Category       as Cat
 import           Control.Monad
     ((>=>))
@@ -77,6 +80,10 @@ instance Cat.Category (Flow m) where
    (.) :: Flow m b c -> Flow m a b -> Flow m a c
    (.) = flip Compose
 
+instance Arr.Arrow (Flow m) where
+    arr = Pure
+    (***) = Join
+
 instance Profunctor (Flow m) where
     dimap :: (b -> a) -> (c -> d) -> Flow m a c -> Flow m b d
     dimap f g p = Pure g Cat.. p Cat.. Pure f
@@ -86,9 +93,11 @@ instance Strong (Flow m) where
     first' f = Join f Cat.id
 
 instance Choice (Flow m) where
-    -- i ---- o
     left' :: Flow m i o -> Flow m (Either i a) (Either o a)
     left' f = IfElse Cat.id (Left <$> f) (Pure Right)
+
+--------------------------------------------------------------
+-- Examples
 
 input :: Flow IO () String
 input = Eff $ const getLine
@@ -125,6 +134,16 @@ flow =
         s4 = s3 Cat.>>> output
     in Duplicate Cat.>>> s4
 
+-- Example contributed by Ibot02
+arrowFlow :: Flow IO () String
+arrowFlow =
+    let readInt = input Cat.>>> string2Int
+    in proc () -> do
+        n <- readInt -< ()
+        m <- readInt -< ()
+        result <- add -< (n, m)
+        output -< result
+
 --                              Duplicate
 -- () ---- String ---- Int ---- (Int, Int) ---- Int ---- String
 flow' :: Flow IO () String
@@ -137,15 +156,13 @@ flow' =
 
 -------------------------------------------------------------
 
-fib0 :: Flow m () (Int, Int)
-fib0 = Pure $ const (0, 1)
+fib0 :: () -> (Int, Int)
+fib0 = const (0, 1)
 
-fibNext :: Flow m (Int, Int, Int) (Either (Int, Int, Int) Int)
-fibNext =
-    Pure
-        $ \case (n, a, b)
-                  | n <= 2    -> Right b
-                  | otherwise -> Left (n - 1, b, a + b)
+fibNext :: (Int, Int, Int) -> Either (Int, Int, Int) Int
+fibNext (n, a, b)
+  | n <= 2    = Right b
+  | otherwise = Left (n - 1, b, a + b)
 
 fibFlow :: Flow IO () String
 fibFlow =
@@ -155,14 +172,24 @@ fibFlow =
         readInt = input Cat.>>> string2Int
         -- all inputs, before map
         curriedInputs :: Flow IO () (Int, (Int, Int))
-        curriedInputs = Duplicate Cat.>>> Join readInt fib0
+        curriedInputs = Duplicate Cat.>>> Join readInt (Pure fib0)
         -- massage outputs
         inputs :: Flow IO () (Int, Int, Int)
         inputs = (\(a, (b, c)) -> (a, b, c)) <$> curriedInputs
         -- print
         fib :: Flow IO () Int
-        fib = inputs Cat.>>> Cycle fibNext
+        fib = inputs Cat.>>> Cycle (Pure fibNext)
     in fib Cat.>>> output
+
+-- Example contributed by Ibot02
+fibArrow :: Flow IO () String
+fibArrow =
+    let readInt = input Cat.>>> string2Int
+    in proc () -> do
+        n <- readInt -< ()
+        (i0, i1) <- Pure fib0 -< ()
+        fib <- Cycle (Pure fibNext) -< (n, i0, i1)
+        output -< fib
 
 runFlow :: Monad m => Flow m a b -> a -> m b
 runFlow = \case
@@ -184,5 +211,5 @@ runFlow = \case
         pure . f
 
 run :: IO ()
-run = runFlow fibFlow () >>= putStrLn
+run = runFlow fibArrow () >>= putStrLn
 

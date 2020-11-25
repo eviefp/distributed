@@ -1,7 +1,10 @@
 module Main where
 
-import Flow
-import Prelude
+import qualified Distributed
+import qualified Options.Generic as O
+import           Prelude
 
 main :: IO ()
-main = run
+main =
+    O.getRecord "distributed"
+        >>= Distributed.run

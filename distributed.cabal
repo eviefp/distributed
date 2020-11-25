@@ -23,17 +23,25 @@ source-repository head
 
 library
   exposed-modules:
+      CLI
+      Distributed
+      Distributed.Protocol
       Flow
       Lib
   other-modules:
       Paths_distributed
   hs-source-dirs:
       src
-  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveFunctor DeriveAnyClass DeriveDataTypeable DeriveGeneric DerivingStrategies EmptyDataDecls FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude NoMonomorphismRestriction OverloadedStrings QuasiQuotes RankNTypes RecordWildCards StandaloneDeriving ScopedTypeVariables TemplateHaskell TupleSections TypeFamilies TypeOperators ViewPatterns
+  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveFunctor DeriveAnyClass DeriveDataTypeable DeriveGeneric DerivingStrategies EmptyDataDecls FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns NoImplicitPrelude NoMonomorphismRestriction OverloadedStrings QuasiQuotes RankNTypes RecordWildCards StandaloneDeriving ScopedTypeVariables TupleSections TypeFamilies TypeOperators ViewPatterns
   ghc-options: -Weverything -Wno-missing-home-modules -Wno-redundant-constraints -Wno-missed-specialisations -Wno-all-missed-specialisations -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-missing-exported-signatures -Wno-missing-import-lists -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-monomorphism-restriction
   build-depends:
       base >=4.7 && <5
+    , bytestring
+    , megaparsec
+    , network-simple
+    , optparse-generic
     , profunctors
+    , text
   default-language: Haskell2010
 
 executable distributed
@@ -42,12 +50,17 @@ executable distributed
       Paths_distributed
   hs-source-dirs:
       app
-  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveFunctor DeriveAnyClass DeriveDataTypeable DeriveGeneric DerivingStrategies EmptyDataDecls FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude NoMonomorphismRestriction OverloadedStrings QuasiQuotes RankNTypes RecordWildCards StandaloneDeriving ScopedTypeVariables TemplateHaskell TupleSections TypeFamilies TypeOperators ViewPatterns
+  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveFunctor DeriveAnyClass DeriveDataTypeable DeriveGeneric DerivingStrategies EmptyDataDecls FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns NoImplicitPrelude NoMonomorphismRestriction OverloadedStrings QuasiQuotes RankNTypes RecordWildCards StandaloneDeriving ScopedTypeVariables TupleSections TypeFamilies TypeOperators ViewPatterns
   ghc-options: -Weverything -Wno-missing-home-modules -Wno-redundant-constraints -Wno-missed-specialisations -Wno-all-missed-specialisations -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-missing-exported-signatures -Wno-missing-import-lists -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-monomorphism-restriction -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , distributed
+    , megaparsec
+    , network-simple
+    , optparse-generic
     , profunctors
+    , text
   default-language: Haskell2010
 
 test-suite distributed-test
@@ -57,10 +70,15 @@ test-suite distributed-test
       Paths_distributed
   hs-source-dirs:
       test
-  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveFunctor DeriveAnyClass DeriveDataTypeable DeriveGeneric DerivingStrategies EmptyDataDecls FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude NoMonomorphismRestriction OverloadedStrings QuasiQuotes RankNTypes RecordWildCards StandaloneDeriving ScopedTypeVariables TemplateHaskell TupleSections TypeFamilies TypeOperators ViewPatterns
+  default-extensions: BangPatterns ConstraintKinds DataKinds DeriveFunctor DeriveAnyClass DeriveDataTypeable DeriveGeneric DerivingStrategies EmptyDataDecls FlexibleContexts FlexibleInstances GADTs GeneralizedNewtypeDeriving InstanceSigs LambdaCase MultiParamTypeClasses NamedFieldPuns NoImplicitPrelude NoMonomorphismRestriction OverloadedStrings QuasiQuotes RankNTypes RecordWildCards StandaloneDeriving ScopedTypeVariables TupleSections TypeFamilies TypeOperators ViewPatterns
   ghc-options: -Weverything -Wno-missing-home-modules -Wno-redundant-constraints -Wno-missed-specialisations -Wno-all-missed-specialisations -Wno-missing-export-lists -Wno-missing-local-signatures -Wno-missing-exported-signatures -Wno-missing-import-lists -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-monomorphism-restriction -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , distributed
+    , megaparsec
+    , network-simple
+    , optparse-generic
     , profunctors
+    , text
   default-language: Haskell2010

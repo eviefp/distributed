@@ -14,40 +14,11 @@ There are a few main parts:
 
 Flow: A ---- B ---- C ---- D
 
-N, M
-
 Strategy Cycle:
 A ---- B ---- C ---- D
-M      N      M      N
 
 
 ## Plan for next stream: Runtime System YAY
-- add `Arrow` instance for `Flow` and try these examples:
-```haskell
--- Examples contributed by Ibot02
-flow :: Flow IO () String
-flow = let input = flow1 >>> flow2
-       in proc () -> do
-         n <- input -< ()
-         m <- input -< ()
-         sum <- flow3 -< (n,m)
-         flow4 -< sum
-
-fibNext :: (Int, Int, Int) -> Either (Int, Int, Int) Int
-fibNext (n, a, b)
-  | n <= 2 = Right b
-  | otherwise = Left (n - 1, b, a + b)
-
-fibFlow :: Flow IO () String
-fibFlow =
-    let
-        input :: Flow IO () Int
-        input = Compose flow1 flow2
-    in proc () -> do
-      n <- input -< ()
-      fib <- Cycle (Pure fibNext) -< (n,1,1)
-      flow4 -< fib
-```
 - configuration:
     - run in listen mode (do not try to connect to other nodes)
     - run in connect mode (connect to other nodes, with specified addresses)
